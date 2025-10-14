@@ -1,4 +1,6 @@
 google-adk
 fastapi
 uvicorn
-
+google-generativeai
+python-dotenv
+pillow

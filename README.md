@@ -2,6 +2,8 @@ python -m venv .venv
 
 .venv\Scripts\activate.bat
 
+ngrok http 10000
+
 pip install -r requirements.txt
 
 adk create my_agent
