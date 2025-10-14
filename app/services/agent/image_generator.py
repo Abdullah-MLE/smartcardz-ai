@@ -7,19 +7,22 @@ import os
 
 client = genai.Client()
 
-def generate_image(prompt: str) -> str:
+def generate_image(prompt: str):
     response = client.models.generate_content(
         model="gemini-2.5-flash-image",
         contents=[prompt],
     )
 
-    os.makedirs("generated_images", exist_ok=True)
-    file_name = f"generated_images/{uuid.uuid4().hex}.png"
-
     for part in response.candidates[0].content.parts:
         if part.inline_data is not None:
             image = Image.open(BytesIO(part.inline_data.data))
-            image.save(file_name)
-            return file_name
+            return image
+    return None
 
-    return "No image generated"
+def save_image(image: Image, folder: str) -> str:
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+    filename = f"{uuid.uuid4().hex}.png"
+    filepath = os.path.join(folder, filename)
+    image.save(filepath)
+    return filepath

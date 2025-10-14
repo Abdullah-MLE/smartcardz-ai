@@ -1,17 +1,42 @@
-python -m venv .venv
+# SmartCardz AI
 
-.venv\Scripts\activate.bat
+A simple API to get information about English words.
 
-ngrok http 10000
+## Prerequisites
 
-pip install -r requirements.txt
+- Python 3.7+
 
-adk create my_agent
+## How to Run
 
-Setting Up API Keys
-Create an account in Google Cloud https://cloud.google.com/?hl=en
-Create a new project
-Go to https://aistudio.google.com/apikey
-Create an API key
-Assign key to the project
-Connect to a billing account
+1.  **Create a virtual environment:**
+    ```sh
+    python -m venv .venv
+    ```
+
+2.  **Activate the virtual environment:**
+    - On Windows:
+      ```sh
+      .venv\Scripts\activate
+      ```
+    - On macOS/Linux:
+      ```sh
+      source .venv/bin/activate
+      ```
+
+3.  **Install dependencies:**
+    ```sh
+    pip install -r requirements.txt
+    ```
+
+4.  **Set up environment variables:**
+    - Rename `.env.example` to `.env`.
+    - Add your Google API key to the `.env` file:
+      ```
+      GOOGLE_API_KEY=your_api_key_here
+      ```
+
+5.  **Run the application:**
+    ```sh
+    uvicorn main:app --host 0.0.0.0 --port 10000 --reload
+    ```
+    The API will be running at `http://localhost:10000`.
