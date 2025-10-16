@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Request
 from app.services.agent.gemini_models import generate_text
 from app.services.agent.image_generator import generate_image, save_image
+import base64
+from io import BytesIO
 
 router = APIRouter()
 
