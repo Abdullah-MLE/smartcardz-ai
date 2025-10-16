@@ -16,20 +16,16 @@ def generate_all(word: str, request: Request):  # <-- أضف request هنا
     example = generate_text(example_prompt)
     image = generate_image(image_prompt)
 
-    image_path = None
-    image_url = None
+    image_base64 = None
     if image:
-        image_path = save_image(image, "app/generated_images")
-
-        # استخدم request هنا بدل Request
-        base_url = str(request.base_url).rstrip("/")
-        filename = image_path.split("\\")[-1]
-        image_url = f"{base_url}/generated_images/{filename}"
+        buffer = BytesIO()
+        image.save(buffer, format="PNG")
+        image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
 
     return {
         "word": word,
         "definition": description,
         "type": word_type,
         "example": example,
-        "image_url": image_url,
+        "image_base64": image_base64,
     }
