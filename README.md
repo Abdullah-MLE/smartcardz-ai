@@ -25,6 +25,9 @@ A simple API to get information about English words.
 
 3.  **Install dependencies:**
     ```sh
+    pip cache purge
+    pip install --use-deprecated=legacy-resolver -r requirements.txt
+
     pip install -r requirements.txt
     ```
 
