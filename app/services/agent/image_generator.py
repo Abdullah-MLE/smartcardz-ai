@@ -8,15 +8,15 @@ import os
 client = genai.Client()
 
 def generate_image(prompt: str):
-    response = client.models.generate_content(
-        model="gemini-2.5-flash-image",
-        contents=[prompt],
-    )
+    # response = client.models.generate_content(
+    #     model="gemini-2.5-flash-image",
+    #     contents=[prompt],
+    # )
 
-    for part in response.candidates[0].content.parts:
-        if part.inline_data is not None:
-            image = Image.open(BytesIO(part.inline_data.data))
-            return image
+    # for part in response.candidates[0].content.parts:
+    #     if part.inline_data is not None:
+    #         image = Image.open(BytesIO(part.inline_data.data))
+    #         return image
     return None
 
 def save_image(image: Image, folder: str) -> str:
