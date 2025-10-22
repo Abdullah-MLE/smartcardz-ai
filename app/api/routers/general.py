@@ -36,13 +36,15 @@ def get_word_example(word: str):
 
 @router.get("/image/{word}")
 def get_word_image(word: str):
-    prompt = f"Create a realistic image representing the word '{word}'."
-    image = generate_image(prompt)
-    if image is None:
-        return {"error": "Could not generate image"}
+    # prompt = f"Create a realistic image representing the word '{word}'."
+    # image = generate_image(prompt)
+    # if image is None:
+    #     return {"error": "Could not generate image"}
 
-    img_bytes = BytesIO()
-    image.save(img_bytes, format="PNG")
-    img_bytes.seek(0)
+    # img_bytes = BytesIO()
+    # image.save(img_bytes, format="PNG")
+    # img_bytes.seek(0)
 
-    return StreamingResponse(img_bytes, media_type="image/png")
+    # return StreamingResponse(img_bytes, media_type="image/png")
+
+    return {"img_bytes": None}  # Image generation is currently disabled
