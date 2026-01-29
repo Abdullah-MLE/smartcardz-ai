@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.env
+.venv/
+venv/
+*.log
+
+# Old/Backup folders
+AI/
+SmartCrdz-ai-v3/
+old/
+smartcardz-ai-v2/
+test/
