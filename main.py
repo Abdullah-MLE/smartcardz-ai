@@ -151,30 +151,45 @@ def process_word_sync(
     image_url = None
     if word_data.is_valid and word_data.image_prompt:
         image_url = generate_post_image(word_data.image_prompt, gemini_wrapper, supabase_crud)
-        response_dict["image_url"] = image_url
         
-        # 3. Store in Supabase
-        db_data = {
-            "word": word,
-            "description": word_data.description,
-            "suggestions": word_data.suggestions,
-            "is_valid": word_data.is_valid,
-            "examples": word_data.examples,
-            "warning": word_data.warning,
-            "type": word_data.types,
-            "url": image_url
-        }
-        try:
-             supabase_crud.insert_vocabulary_item(db_data)
-             print(f"Stored vocabulary item: {word}")
-        except Exception as e:
-             # Just print error, don't fail the whole response if DB insert fails
-             # Although user said "wait for all to be uploaded", if it fails we continue
-             print(f"Failed to store vocabulary item: {e}")
-             # We might want to raise here if we want the retry logic to catch DB failures too
-             raise e
+    # 3. Store in Supabase
+    db_data = {
+        "word": word,
+        "description": word_data.description,
+        "suggestions": word_data.suggestions,
+        "is_valid": word_data.is_valid,
+        "examples": word_data.examples,
+        "warning": word_data.warning,
+        "type": word_data.type,
+        "url": image_url
+    }
+    
+    stored_id = None
+    try:
+            stored_item = supabase_crud.insert_vocabulary_item(db_data)
+            if stored_item:
+                stored_id = stored_item.get('id')
+            print(f"Stored vocabulary item: {word}")
+    except Exception as e:
+            # Just print error, don't fail the whole response if DB insert fails
+            print(f"Failed to store vocabulary item: {e}")
+            # We might want to raise here if we want the retry logic to catch DB failures too
+            raise e
 
-    return response_dict
+    # Construct final response dictionary matching user requirements
+    final_response = {
+        "word": word,
+        "description": word_data.description,
+        "suggestions": word_data.suggestions,
+        "is_valid": word_data.is_valid,
+        "examples": word_data.examples,
+        "warning": word_data.warning,
+        "type": word_data.type,
+        "URL": image_url, # Capitalized URL
+        "id": stored_id
+    }
+
+    return final_response
 
 async def process_word_async(
     word: str,
@@ -241,10 +256,6 @@ async def generate_word_content(
     
     results = await asyncio.gather(*tasks)
     
-    # If single word requested, return just that object (backward compatibility/simplicity)
-    if len(results) == 1:
-        return results[0]
-        
     return results
 
 if __name__ == "__main__":

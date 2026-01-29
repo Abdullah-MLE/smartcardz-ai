@@ -14,10 +14,11 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Expose port 8000
-EXPOSE 8000
+# Expose port 10000 to match Render's default
+EXPOSE 10000
 
 # Define environment variable
 ENV PYTHONUNBUFFERED=1
 
 # Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]

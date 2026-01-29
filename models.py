@@ -57,7 +57,7 @@ class WordAgentResponse(BaseModel):
     """Schema for Word Agent response."""
     description: Optional[str] = None
     is_valid: bool
-    types: Optional[str] = None
+    type: Optional[str] = None
     examples: Optional[str] = None
     image_prompt: Optional[str] = None
     image_url: Optional[str] = None
