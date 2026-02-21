@@ -13,18 +13,17 @@ from PIL import Image
 from typing import Any, Callable, Dict, List, Optional
 from google import genai
 from google.genai import types
+
 from dotenv import load_dotenv
-from prompts import get_media_process_error_prompt
-from config import config
-from models import InputParams, TextParams, ImageParams, OutputResult
-from logger_config import log_operation
+from .prompts import get_media_process_error_prompt
+from .config import config
+from .models import InputParams, TextParams, ImageParams, OutputResult
+from .logger_config import log_operation
 
 load_dotenv()
 
 
-# ============================================================================
-# GEMINI WRAPPER CLASS
-# ============================================================================
+# Gemini Wrapper Class
 
 class GeminiWrapper:
     """
@@ -42,9 +41,7 @@ class GeminiWrapper:
         self.client = client or genai.Client()
         self.logger = logging.getLogger("GeminiWrapper")
     
-    # ========================================================================
-    # PUBLIC METHODS
-    # ========================================================================
+    # Public Methods
     
     def generate_text(
         self,
@@ -80,7 +77,22 @@ class GeminiWrapper:
         
         # Define text extractor
         def extract_text(response):
-            return response.parsed if text_params.response_schema else response.text
+            """Extracts text from the response."""
+            result = response.parsed if text_params.response_schema else response.text
+            
+            # Re-instantiate Pydantic model if we got a dict but expected a model class
+            if text_params.response_schema and isinstance(result, dict):
+                try:
+                    # Check if response_schema is a Pydantic model class
+                    if hasattr(text_params.response_schema, "model_validate"):
+                        return text_params.response_schema.model_validate(result)
+                    elif isinstance(text_params.response_schema, type):
+                        return text_params.response_schema(**result)
+                except Exception as e:
+                    # If conversion fails, fallback to dict but log it
+                    self.logger.warning(f"Failed to convert dict to Pydantic model: {e}")
+            
+            return result
         
         # Execute with retry
         output = self._execute_with_retry(
@@ -134,6 +146,7 @@ class GeminiWrapper:
         
         # Define image extractor
         def extract_image(response):
+            """Extracts image bytes from the response."""
             image_bytes = self._extract_image_from_response(response)
             if not image_bytes:
                 raise ValueError("No image data found in response parts.")
@@ -157,9 +170,7 @@ class GeminiWrapper:
             image_params=image_params,
         )
     
-    # ========================================================================
-    # PRIVATE HELPER METHODS - Execution & Retry Logic
-    # ========================================================================
+    # Private Helper Methods - Execution & Retry Logic
     
     def _execute_with_retry(
         self,
@@ -238,9 +249,7 @@ class GeminiWrapper:
             error_log=error_log,
         )
     
-    # ========================================================================
-    # PRIVATE HELPER METHODS - Input Preparation
-    # ========================================================================
+    # Private Helper Methods - Input Preparation
     
     def _prepare_model_inputs(
         self,
@@ -352,7 +361,13 @@ class GeminiWrapper:
         # Text generation config
         if text_params:
             if text_params.response_schema:
-                config_params["response_schema"] = text_params.response_schema
+                # Use response_json_schema to bypass SDK additionalProperties validation
+                schema = text_params.response_schema
+                if hasattr(schema, "model_json_schema"):
+                    config_params["response_json_schema"] = schema.model_json_schema()
+                else:
+                    config_params["response_json_schema"] = schema
+                
                 config_params["response_mime_type"] = text_params.response_mime_type
             if text_params.tools:
                 config_params["tools"] = text_params.tools
@@ -371,9 +386,7 @@ class GeminiWrapper:
         
         return types.GenerateContentConfig(**config_params)
     
-    # ========================================================================
-    # PRIVATE HELPER METHODS - Media Processing
-    # ========================================================================
+    # Private Helper Methods - Media Processing
     
     def _download_media(self, url: str) -> tuple[bytes, str]:
         """Download media from URL and return (bytes, mime_type)."""
@@ -423,9 +436,7 @@ class GeminiWrapper:
             self.logger.warning(f"Image resizing failed: {e}")
             return image_bytes
     
-    # ========================================================================
-    # PRIVATE HELPER METHODS - Response Extraction
-    # ========================================================================
+    # Private Helper Methods - Response Extraction
     
     def _extract_image_from_response(self, response: Any) -> Optional[bytes]:
         """Extract binary image data from Gemini response."""
@@ -455,9 +466,7 @@ class GeminiWrapper:
         except (AttributeError, TypeError):
             return {"input": 0, "output": 0}
     
-    # ========================================================================
-    # PRIVATE HELPER METHODS - Utilities
-    # ========================================================================
+    # Private Helper Methods - Utilities
     
     def _prioritize_models(
         self,
@@ -507,35 +516,34 @@ class GeminiWrapper:
         }
 
 
-# ============================================================================
-# CONVENIENCE FUNCTION (for backwards compatibility)
-# ============================================================================
+# Convenience Function
 
 def init_gemini_client():
     """Initialize and return a Gemini client."""
     return genai.Client()
 
 
-# ============================================================================
-# USAGE EXAMPLE
-# ============================================================================
+# Usage Example
 
 if __name__ == "__main__":
     # Example usage
     wrapper = GeminiWrapper()
     
     # Text generation
-    text_result = wrapper.generate_text(
-        input_params=InputParams(
-            prompt="Tell me a joke about programming",
-        )
-    )
-    print("Text:", text_result["content"])
+    # text_result = wrapper.generate_text(
+    #     input_params=InputParams(
+    #         prompt="Tell me a joke about programming",
+    #     )
+    # )
+    # print("Text:", text_result["content"])
     
     # Image generation
     image_result = wrapper.generate_image(
         input_params=InputParams(
             prompt="A cute robot coding on a laptop",
+        ),
+        image_params = ImageParams(
+            output_image_aspect_ratio="1:1"
         )
     )
     print("Image generated:", image_result["success"])

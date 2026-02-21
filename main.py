@@ -2,14 +2,12 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 from typing import List, Dict, Optional, Any
 from dotenv import load_dotenv
-import os
-import random
 import asyncio
-from datetime import datetime
-from supabase import create_client, Client
 from google import genai
-from GeminiWrapper import GeminiWrapper
-from models import InputParams, TextParams, ImageParams, WordAgentResponse
+from libs.GeminiWrapper.GeminiWrapper import GeminiWrapper
+from libs.GeminiWrapper.models import InputParams, TextParams, ImageParams
+from libs.SupabaseCRUD.SupabaseCRUD import SupabaseCRUD
+from models import WordAgentResponse, WordAgentInput
 from prompts import get_word_agent_system_prompt, get_word_agent_user_prompt
 
 load_dotenv()
@@ -25,54 +23,6 @@ def init_gemini_client():
 gemini_client = init_gemini_client()
 gemini_wrapper = GeminiWrapper(gemini_client)
 
-# -----------------------------------------------------------------------------
-# Supabase CRUD
-# -----------------------------------------------------------------------------
-class SupabaseCRUD:
-    def __init__(self):
-        self.supabase_client = self._init_supabase_client()
-
-    def _init_supabase_client(self) -> Client:
-        url = os.environ.get("SUPABASE_URL") 
-        key = os.environ.get("SUPABASE_KEY")
-        if not url or not key:
-             print("Warning: SUPABASE_URL or SUPABASE_KEY not found in environment variables.")
-             # You might want to handle this more gracefully or let it fail later
-             
-        return create_client(url, key)
-
-    def _generate_unique_filename(self, extension="png") -> str:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        return f"img_{timestamp}_{random.randint(0, 1000000)}.{extension}"
-
-    def _get_public_url(self, bucket_name: str, file_name: str) -> str:
-        return self.supabase_client.storage.from_(bucket_name).get_public_url(file_name)
-
-    def upload_image(
-        self,
-        image_bytes: bytes,
-        file_name: str = None,
-        bucket_name="pics",
-        content_type="image/png") -> str:
-
-        if not file_name:
-            file_name = self._generate_unique_filename()
-
-        self.supabase_client.storage.from_(bucket_name).upload(
-            path=file_name,
-            file=image_bytes,
-            file_options={
-                "content-type": content_type,
-                "upsert": "true"
-            }
-        )
-
-        return self._get_public_url(bucket_name, file_name)
-
-    def insert_vocabulary_item(self, data: dict):
-        response = self.supabase_client.table("vocabulary_items").insert(data).execute()
-        return response.data[0] if response.data else None
-
 # Initialize SupabaseCRUD
 supabase_crud = SupabaseCRUD()
 
@@ -84,49 +34,33 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, supaba
     if not image_prompt:
         return None
 
-    print(f"Generating image for prompt: {image_prompt[:50]}...")
-    
-    input_params = InputParams(prompt=image_prompt)
+    input_params = InputParams(
+        prompt=image_prompt,
+        model="gemini-2.5-flash-image"
+    )
     image_params = ImageParams(output_image_aspect_ratio="1:1") # Defaulting to 1:1 as per common square posts
     
     result = gemini_wrapper.generate_image(input_params=input_params, image_params=image_params)
     
     if not result["success"]:
-        print(f"Image generation failed: {result.get('error')}")
         return None
     
     image_bytes = result["content"]
+    
     # Upload to Supabase
-    try:
-        public_url = supabase_crud.upload_image(image_bytes, bucket_name="pics")
-        print(f"Image uploaded successfully: {public_url}")
-        return public_url
-    except Exception as e:
-        print(f"Image upload failed: {e}")
-        return None
+    public_url = supabase_crud.upload_image(image_bytes, bucket_name="pics")
+    return public_url
 
 # -----------------------------------------------------------------------------
 # Main Logic
 # -----------------------------------------------------------------------------
 def process_word_sync(
-    word: str,
-    user_age: str,
-    proficiency_level: str,
-    image_style: str,
-    country: str,
-    target_language: str,
+    input_data: WordAgentInput,
     gemini_wrapper: GeminiWrapper
 ):
     # 1. Generate Text Content
     system_prompt = get_word_agent_system_prompt()
-    user_prompt = get_word_agent_user_prompt(
-        word=word,
-        target_language=target_language,
-        user_age=user_age,
-        proficiency_level=proficiency_level,
-        image_style=image_style,
-        country=country
-    )
+    user_prompt = get_word_agent_user_prompt(input_data)
     
     input_params = InputParams(
         prompt=user_prompt,
@@ -154,7 +88,7 @@ def process_word_sync(
         
     # 3. Store in Supabase
     db_data = {
-        "word": word,
+        "word": input_data.word,
         "description": word_data.description,
         "suggestions": word_data.suggestions,
         "is_valid": word_data.is_valid,
@@ -165,20 +99,13 @@ def process_word_sync(
     }
     
     stored_id = None
-    try:
-            stored_item = supabase_crud.insert_vocabulary_item(db_data)
-            if stored_item:
-                stored_id = stored_item.get('id')
-            print(f"Stored vocabulary item: {word}")
-    except Exception as e:
-            # Just print error, don't fail the whole response if DB insert fails
-            print(f"Failed to store vocabulary item: {e}")
-            # We might want to raise here if we want the retry logic to catch DB failures too
-            raise e
+    stored_item = supabase_crud.insert_row("vocabulary_items", db_data)
+    if stored_item:
+        stored_id = stored_item.get('id')
 
     # Construct final response dictionary matching user requirements
     final_response = {
-        "word": word,
+        "word": input_data.word,
         "description": word_data.description,
         "suggestions": word_data.suggestions,
         "is_valid": word_data.is_valid,
@@ -192,41 +119,23 @@ def process_word_sync(
     return final_response
 
 async def process_word_async(
-    word: str,
-    user_age: str,
-    proficiency_level: str,
-    image_style: str,
-    country: str,
-    target_language: str,
+    input_data: WordAgentInput,
     gemini_wrapper: GeminiWrapper
 ):
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            print(f"Processing word: {word} (Attempt {attempt + 1}/{max_retries})")
-            result = await asyncio.to_thread(
-                process_word_sync,
-                word=word,
-                user_age=user_age,
-                proficiency_level=proficiency_level,
-                image_style=image_style,
-                country=country,
-                target_language=target_language,
-                gemini_wrapper=gemini_wrapper
-            )
-            if "error" in result:
-                raise Exception(result["error"])
-            return result
-        except Exception as e:
-            print(f"Error processing {word} (Attempt {attempt + 1}): {e}")
-            if attempt == max_retries - 1:
-                return {"word": word, "error": f"Failed after {max_retries} attempts. Last error: {str(e)}"}
-            await asyncio.sleep(1) # Simple backoff
+    result = await asyncio.to_thread(
+        process_word_sync,
+        input_data=input_data,
+        gemini_wrapper=gemini_wrapper
+    )
+    if "error" in result:
+        raise Exception(result["error"])
+    return result
 
 @app.get("/")
 async def generate_word_content(
     words: Optional[str] = None,
     lang: Optional[str] = None,
+    output_lang: Optional[str] = None,
     age: Optional[str] = None,
     level: Optional[str] = None,
     style: Optional[str] = None,
@@ -242,14 +151,18 @@ async def generate_word_content(
 
     tasks = []
     for word in word_list:
+        input_data = WordAgentInput(
+            word=word,
+            target_language=lang or "as the word",
+            output_language=output_lang or lang,
+            user_age=age or "None",
+            proficiency_level=level or "None",
+            image_style=style or "None",
+            country=country or "None"
+        )
         tasks.append(
             process_word_async(
-                word=word,
-                target_language=lang,
-                user_age=age,
-                proficiency_level=level,
-                image_style=style,
-                country=country,
+                input_data=input_data,
                 gemini_wrapper=gemini_wrapper
             )
         )

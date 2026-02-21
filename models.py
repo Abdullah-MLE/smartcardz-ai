@@ -1,56 +1,22 @@
 """
-Pydantic Models for Gemini Wrapper
+Pydantic Models for WordAgent API
 ==================================
-Organized parameter models to reduce long parameter lists.
+Organized parameter models.
 """
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+from typing import Optional
+from pydantic import BaseModel
 
 
-class InputParams(BaseModel):
-    """Common input parameters for both text and image generation."""
-    prompt: Optional[str] = None
-    media: Optional[List[str]] = None
-    model: Optional[str] = None
-    processed_image_size: Optional[int] = None
-    media_resolution: Optional[str] = None
-    system_instruction: Optional[str] = None
-    
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class TextParams(BaseModel):
-    """Text generation specific parameters."""
-    response_schema: Any = None
-    response_mime_type: Optional[str] = None
-    tools: Optional[List[Any]] = None
-    tool_config: Any = None
-    
-    class Config:
-        arbitrary_types_allowed = True
-
-
-class ImageParams(BaseModel):
-    """Image generation specific parameters."""
-    output_image_aspect_ratio: Optional[str] = None
-    output_image_size: Optional[str] = None
-
-
-class OutputResult(BaseModel):
-    """Standardized output/response from generation."""
-    content: Any = None
-    model_used: str = ""
-    token_usage: Dict[str, int] = Field(default_factory=lambda: {"input": 0, "output": 0})
-    success: bool = False
-    error: Optional[str] = None
-    retry_attempts: int = 0
-    error_log: List[str] = Field(default_factory=list)
-    raw_response: Any = None
-    
-    class Config:
-        arbitrary_types_allowed = True
+class WordAgentInput(BaseModel):
+    """Schema for Word Agent Input parameters."""
+    word: str
+    target_language: str = "as the word"
+    output_language: str = "Arabic"
+    user_age: str = "None"
+    country: str = "None"
+    image_style: str = "None"
+    proficiency_level: str = "None"
 
 
 class WordAgentResponse(BaseModel):

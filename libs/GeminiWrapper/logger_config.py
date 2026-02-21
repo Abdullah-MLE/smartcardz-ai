@@ -1,11 +1,9 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, Optional, List
-from models import InputParams, TextParams, ImageParams, OutputResult
+from typing import Any, Optional
+from .models import InputParams, TextParams, ImageParams, OutputResult
 
-# ============================================================================
-# LOGGING SETUP
-# ============================================================================
+# Logging Setup
 
 LOG_SEPARATOR = "=" * 80
 
@@ -77,6 +75,52 @@ def _log_concise(
     logger.info(" | ".join(parts))
 
 
+def _format_header_section(timestamp: str, operation_type: str, status: str, input_params: InputParams, output: OutputResult) -> list[str]:
+    """Formats the header section of the log."""
+    return [
+        f"\n{LOG_SEPARATOR}",
+        f"[{timestamp}] [{operation_type.upper()}] [{status}]",
+        f"Model Used: {output.model_used}",
+        f"Requested Model: {input_params.model}",
+        f"Tokens: Input={output.token_usage['input']}, Output={output.token_usage['output']}",
+        f"Retries: {output.retry_attempts}",
+    ]
+
+def _format_config_section(input_params: InputParams, text_params: Optional[TextParams], image_params: Optional[ImageParams]) -> list[str]:
+    """Formats the configuration section of the log."""
+    lines = []
+    # Prompt
+    lines.append(f"\n--- PROMPT ---\n{input_params.prompt}")
+    
+    # Media
+    if input_params.media:
+        lines.append(f"\n--- MEDIA ({len(input_params.media)} files) ---")
+        for i, m in enumerate(input_params.media, 1):
+            lines.append(f"  {i}. {_safe_str(m)[:200]}")
+            
+    # Text config
+    if text_params:
+        if text_params.response_schema:
+            lines.append(f"\n--- SCHEMA ---\n{_safe_str(text_params.response_schema)}")
+        if text_params.response_mime_type:
+            lines.append(f"\n--- RESPONSE MIME TYPE ---\n{text_params.response_mime_type}")
+        if text_params.tools:
+            lines.append(f"\n--- TOOLS ---")
+            for t in text_params.tools:
+                lines.append(f"  - {_safe_str(t)}")
+    
+    # Image config
+    has_image_config = (
+        (image_params and (image_params.output_image_aspect_ratio or image_params.output_image_size))
+        or input_params.processed_image_size
+    )
+    if has_image_config:
+        lines.append(f"\n--- IMAGE CONFIG ---")
+        if image_params and image_params.output_image_aspect_ratio:
+            lines.append(f"  Aspect Ratio: {image_params.output_image_aspect_ratio}")
+    
+    return lines
+
 def _log_detailed(
     timestamp: str,
     operation_type: str,
@@ -88,54 +132,8 @@ def _log_detailed(
     """Logs detailed multi-line message for failures or retries."""
     status = "SUCCESS_WITH_RETRIES" if output.success else "FAILED"
     
-    # Header section
-    lines = [
-        f"\n{LOG_SEPARATOR}",
-        f"[{timestamp}] [{operation_type.upper()}] [{status}]",
-        f"Model Used: {output.model_used}",
-        f"Requested Model: {input_params.model}",
-        f"Tokens: Input={output.token_usage['input']}, Output={output.token_usage['output']}",
-        f"Retries: {output.retry_attempts}",
-    ]
-    
-    # Prompt section
-    lines.append(f"\n--- PROMPT ---\n{input_params.prompt}")
-    
-    # Media section
-    if input_params.media:
-        lines.append(f"\n--- MEDIA ({len(input_params.media)} files) ---")
-        for i, m in enumerate(input_params.media, 1):
-            lines.append(f"  {i}. {_safe_str(m)[:200]}")
-    
-    # Text config section
-    if text_params:
-        if text_params.response_schema:
-            lines.append(f"\n--- SCHEMA ---\n{_safe_str(text_params.response_schema)}")
-        if text_params.response_mime_type:
-            lines.append(f"\n--- RESPONSE MIME TYPE ---\n{text_params.response_mime_type}")
-        if text_params.tools:
-            lines.append(f"\n--- TOOLS ---")
-            for t in text_params.tools:
-                lines.append(f"  - {_safe_str(t)}")
-        if text_params.tool_config:
-            lines.append(f"\n--- TOOL CONFIG ---\n{_safe_str(text_params.tool_config)}")
-    
-    if input_params.system_instruction:
-        lines.append(f"\n--- SYSTEM INSTRUCTION ---\n{input_params.system_instruction}")
-    
-    # Image config section
-    has_image_config = (
-        (image_params and (image_params.output_image_aspect_ratio or image_params.output_image_size))
-        or input_params.processed_image_size
-    )
-    if has_image_config:
-        lines.append(f"\n--- IMAGE CONFIG ---")
-        if image_params and image_params.output_image_aspect_ratio:
-            lines.append(f"  Aspect Ratio: {image_params.output_image_aspect_ratio}")
-        if image_params and image_params.output_image_size:
-            lines.append(f"  Output Size: {image_params.output_image_size}")
-        if input_params.processed_image_size:
-            lines.append(f"  Processed Size: {input_params.processed_image_size}")
+    lines = _format_header_section(timestamp, operation_type, status, input_params, output)
+    lines.extend(_format_config_section(input_params, text_params, image_params))
     
     # Error section
     if output.error:

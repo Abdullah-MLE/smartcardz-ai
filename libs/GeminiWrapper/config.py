@@ -31,7 +31,7 @@ class GeminiConfig(BaseModel):
     default_output_image_aspect_ratio: str = "1:1"
     
     # Image Processing (input resizing)
-    default_image_max_dimension: int = 300
+    default_image_max_dimension: int = 500
     default_media_resolution: str = "MEDIA_RESOLUTION_UNSPECIFIED"
     
     # Retry Settings

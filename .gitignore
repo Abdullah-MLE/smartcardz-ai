@@ -5,6 +5,8 @@ __pycache__/
 .venv/
 venv/
 *.log
+__pycache__
+old
 
 # Old/Backup folders
 AI/
@@ -12,3 +14,4 @@ SmartCrdz-ai-v3/
 old/
 smartcardz-ai-v2/
 test/
+
