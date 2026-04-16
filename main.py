@@ -7,8 +7,12 @@ from google import genai
 from libs.GeminiWrapper.GeminiWrapper import GeminiWrapper
 from libs.GeminiWrapper.models import InputParams, TextParams, ImageParams
 from libs.SupabaseCRUD.SupabaseCRUD import SupabaseCRUD
+from libs.FirebaseCRUD.FirebaseStorageCRUD import FirebaseStorageCRUD
 from models import WordAgentResponse, WordAgentInput
 from prompts import get_word_agent_system_prompt, get_word_agent_user_prompt
+import io
+from PIL import Image
+import logging
 
 load_dotenv()
 
@@ -26,11 +30,42 @@ gemini_wrapper = GeminiWrapper(gemini_client)
 # Initialize SupabaseCRUD
 supabase_crud = SupabaseCRUD()
 
+# Initialize FirebaseStorageCRUD
+firebase_storage = FirebaseStorageCRUD()
+
 # -----------------------------------------------------------------------------
 # Image Generation Helper
 # -----------------------------------------------------------------------------
-def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, supabase_crud: SupabaseCRUD) -> Optional[str]:
-    """Generates an image from a prompt and uploads it to Supabase."""
+def _resize_image(image_bytes: bytes, max_dimension: Optional[int] = 400) -> bytes:
+    """
+    Resizes image bytes if dimensions exceed max_dimension, maintaining aspect ratio.
+    Does NOT upscale.
+    """
+    if not max_dimension:
+        return image_bytes
+
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            width, height = img.size
+            if width <= max_dimension and height <= max_dimension:
+                return image_bytes
+                
+            scale_factor = min(max_dimension / width, max_dimension / height)
+            new_width = int(width * scale_factor)
+            new_height = int(height * scale_factor)
+            
+            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            output = io.BytesIO()
+            fmt = img.format if img.format else 'JPEG'
+            resized_img.save(output, format=fmt)
+            return output.getvalue()
+            
+    except Exception as e:
+        logging.getLogger("GeminiWrapper").warning(f"Image resizing failed: {e}")
+        return image_bytes
+
+def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper) -> Optional[str]:
+    """Generates an image from a prompt, resizes it, and uploads to Firebase."""
     if not image_prompt:
         return None
 
@@ -47,8 +82,11 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, supaba
     
     image_bytes = result["content"]
     
-    # Upload to Supabase
-    public_url = supabase_crud.upload_image(image_bytes, bucket_name="pics")
+    # Resize the image
+    image_bytes = _resize_image(image_bytes, max_dimension=400)
+    
+    # Upload to Firebase
+    public_url = firebase_storage.upload_image(image_bytes, folder="post_images")
     return public_url
 
 # -----------------------------------------------------------------------------
@@ -84,7 +122,7 @@ def process_word_sync(
     # 2. Generate Image if valid and prompt exists
     image_url = None
     if word_data.is_valid and word_data.image_prompt:
-        image_url = generate_post_image(word_data.image_prompt, gemini_wrapper, supabase_crud)
+        image_url = generate_post_image(word_data.image_prompt, gemini_wrapper)
         
     # 3. Store in Supabase
     db_data = {

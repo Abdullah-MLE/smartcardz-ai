@@ -6,3 +6,4 @@ supabase
 pydantic
 requests
 Pillow
+firebase-admin

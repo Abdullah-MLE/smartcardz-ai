@@ -33,6 +33,8 @@ Follow these steps to set up the project on Windows:
     GEMINI_API_KEY=your_gemini_api_key
     SUPABASE_URL=your_supabase_url
     SUPABASE_KEY=your_supabase_key
+    FIREBASE_CREDENTIALS=firebase-key.json
+    FIREBASE_BUCKET=your-project-id.appspot.com
     ```
 
 ## Running the Server
