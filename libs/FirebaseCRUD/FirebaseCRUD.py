@@ -1,13 +1,14 @@
 import os
 import firebase_admin
-from firebase_admin import credentials, storage
+from firebase_admin import credentials, storage, firestore
 from datetime import datetime
 import random
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
 
-class FirebaseStorageCRUD:
+class FirebaseCRUD:
     def __init__(self):
         self._init_firebase()
 
@@ -19,8 +20,6 @@ class FirebaseStorageCRUD:
             
             if cred_path and bucket_name:
                 try:
-                    import json
-                    
                     # If it's a JSON string (used in Render), load it as dictionary
                     if cred_path.strip().startswith("{"):
                         cred_dict = json.loads(cred_path)
@@ -62,4 +61,18 @@ class FirebaseStorageCRUD:
             return blob.public_url
         except Exception as e:
             print(f"Error uploading to Firebase Storage: {e}")
+            return None
+
+    def insert_row(self, collection_name: str, data: dict):
+        """Inserts a document into a Firestore collection and returns its auto-generated ID."""
+        if not firebase_admin._apps:
+            print("Firebase is not initialized. Cannot insert into database.")
+            return None
+            
+        try:
+            db = firestore.client()
+            _, doc_ref = db.collection(collection_name).add(data)
+            return doc_ref.id
+        except Exception as e:
+            print(f"Error inserting into Firestore: {e}")
             return None

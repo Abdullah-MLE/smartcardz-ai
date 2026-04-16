@@ -5,7 +5,7 @@ This is a FastAPI server that provides a "Word Agent" service. It generates rich
 ## Prerequisites
 
 - Python 3.8+
-- Supabase Account (URL and Key)
+- Firebase Account
 - Google Gemini API Key
 
 ## Setup & Installation
@@ -31,8 +31,6 @@ Follow these steps to set up the project on Windows:
     Ensure you have a `.env` file in the root directory with the following keys:
     ```env
     GEMINI_API_KEY=your_gemini_api_key
-    SUPABASE_URL=your_supabase_url
-    SUPABASE_KEY=your_supabase_key
     FIREBASE_CREDENTIALS=firebase-key.json
     FIREBASE_BUCKET=your-project-id.appspot.com
     ```

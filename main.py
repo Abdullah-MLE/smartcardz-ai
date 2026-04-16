@@ -6,8 +6,7 @@ import asyncio
 from google import genai
 from libs.GeminiWrapper.GeminiWrapper import GeminiWrapper
 from libs.GeminiWrapper.models import InputParams, TextParams, ImageParams
-from libs.SupabaseCRUD.SupabaseCRUD import SupabaseCRUD
-from libs.FirebaseCRUD.FirebaseStorageCRUD import FirebaseStorageCRUD
+from libs.FirebaseCRUD.FirebaseCRUD import FirebaseCRUD
 from models import WordAgentResponse, WordAgentInput
 from prompts import get_word_agent_system_prompt, get_word_agent_user_prompt
 import io
@@ -27,11 +26,8 @@ def init_gemini_client():
 gemini_client = init_gemini_client()
 gemini_wrapper = GeminiWrapper(gemini_client)
 
-# Initialize SupabaseCRUD
-supabase_crud = SupabaseCRUD()
-
-# Initialize FirebaseStorageCRUD
-firebase_storage = FirebaseStorageCRUD()
+# Initialize FirebaseCRUD
+firebase_crud = FirebaseCRUD()
 
 # -----------------------------------------------------------------------------
 # Image Generation Helper
@@ -86,7 +82,7 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper) -> Opt
     image_bytes = _resize_image(image_bytes, max_dimension=400)
     
     # Upload to Firebase
-    public_url = firebase_storage.upload_image(image_bytes, folder="post_images")
+    public_url = firebase_crud.upload_image(image_bytes, folder="post_images")
     return public_url
 
 # -----------------------------------------------------------------------------
@@ -124,7 +120,7 @@ def process_word_sync(
     if word_data.is_valid and word_data.image_prompt:
         image_url = generate_post_image(word_data.image_prompt, gemini_wrapper)
         
-    # 3. Store in Supabase
+    # 3. Store in Firebase Firestore
     db_data = {
         "word": input_data.word,
         "description": word_data.description,
@@ -136,10 +132,7 @@ def process_word_sync(
         "url": image_url
     }
     
-    stored_id = None
-    stored_item = supabase_crud.insert_row("vocabulary_items", db_data)
-    if stored_item:
-        stored_id = stored_item.get('id')
+    stored_id = firebase_crud.insert_row("vocabulary_items", db_data)
 
     # Construct final response dictionary matching user requirements
     final_response = {
