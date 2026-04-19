@@ -82,7 +82,7 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper) -> Opt
 
     input_params = InputParams(
         prompt=image_prompt,
-        model="gemini-2.5-flash-image"
+        model="imagen-3.0-fast-generate-001"
     )
     image_params = ImageParams(output_image_aspect_ratio="1:1") # Defaulting to 1:1 as per common square posts
     

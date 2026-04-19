@@ -11,12 +11,12 @@ from typing import List
 class GeminiConfig(BaseModel):
     """Gemini wrapper configuration - all settings in one place."""
     
-    # Text Generation Models
-    default_text_model: str = "gemini-3-flash-preview"
+    # Text Generation Models (Cheapest & Fastest)
+    default_text_model: str = "gemini-2.5-flash-lite"
     text_fallback_models: List[str] = [
-        "gemini-3-flash-preview",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash-lite",
         "gemini-2.5-flash",
-        "gemini-2.0-flash",
     ]
     
     # Image Generation Models
