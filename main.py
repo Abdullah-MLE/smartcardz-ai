@@ -89,6 +89,10 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper) -> Opt
     result = gemini_wrapper.generate_image(input_params=input_params, image_params=image_params)
     
     if not result["success"]:
+        print(f"\n--- IMAGE GENERATION FAILED ---")
+        print(f"Error: {result.get('error')}")
+        print(f"Raw Logs: {result.get('error_log')}")
+        print(f"-------------------------------\n")
         return None
     
     image_bytes = result["content"]
@@ -216,6 +220,24 @@ async def generate_word_content(
     results = await asyncio.gather(*tasks)
     
     return results
+
+@app.get("/models")
+async def list_available_models():
+    """Debug endpoint to list all available models on this environment."""
+    try:
+        models = []
+        for m in gemini_client.models.list():
+            # filter for image models to keep it short
+            name = m.name.lower() if m.name else ""
+            display = m.display_name.lower() if m.display_name else ""
+            if "image" in name or "image" in display or "imagen" in name:
+                models.append({
+                    "name": m.name,
+                    "display_name": m.display_name
+                })
+        return {"environment": "Vertex AI" if gemini_client._api_client.vertexai else "AI Studio", "image_models": models}
+    except Exception as e:
+        return {"error": str(e)}
 
 if __name__ == "__main__":
     import uvicorn
