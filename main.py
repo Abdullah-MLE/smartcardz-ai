@@ -17,9 +17,24 @@ load_dotenv()
 
 app = FastAPI()
 
+import os
+
 def init_gemini_client():
-    """Initialize and return a Gemini client."""
-    client = genai.Client()
+    """Initialize and return a Gemini client (supports Vertex AI)."""
+    project_id = os.environ.get("GCP_PROJECT_ID")
+    location = os.environ.get("GCP_LOCATION", "us-central1")
+    
+    if project_id:
+        # Using Vertex AI to consume GCP Free Credits
+        client = genai.Client(
+            vertexai=True,
+            project=project_id,
+            location=location
+        )
+    else:
+        # Fallback to AI Studio if no Project ID is provided
+        client = genai.Client()
+        
     return client
 
 # Global Gemini Wrapper instance
