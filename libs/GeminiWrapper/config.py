@@ -19,11 +19,18 @@ class GeminiConfig(BaseModel):
         "gemini-2.5-flash",
     ]
     
+    # # Image Generation Models
+    # default_image_model: str = "gemini-3-pro-image-preview"
+    # image_models: List[str] = [
+    #     "gemini-3-pro-image-preview",
+    #     "gemini-2.5-flash-image",
+    # ]
+
     # Image Generation Models
-    default_image_model: str = "gemini-3-pro-image-preview"
+    default_image_model: str = "imagen-3.0-fast-generate-001"
     image_models: List[str] = [
-        "gemini-3-pro-image-preview",
-        "gemini-2.5-flash-image",
+        "imagen-3.0-fast-generate-001",
+        "imagen-3.0-pro-generate-001",
     ]
     
     # Image Output Settings
