@@ -27,10 +27,10 @@ class GeminiConfig(BaseModel):
     # ]
 
     # Image Generation Models
-    default_image_model: str = "imagen-3.0-fast-generate-001"
+    default_image_model: str = "imagen-4.0-fast-generate-001"
     image_models: List[str] = [
-        "imagen-3.0-fast-generate-001",
-        "imagen-3.0-pro-generate-001",
+        "imagen-4.0-fast-generate-001",
+        "imagen-3.0-generate-002",
     ]
     
     # Image Output Settings
