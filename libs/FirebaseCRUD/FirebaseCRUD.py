@@ -40,15 +40,19 @@ class FirebaseCRUD:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
         return f"img_{timestamp}_{random.randint(0, 1000000)}.{extension}"
 
-    def upload_image(self, image_bytes: bytes, extension="jpeg", content_type="image/jpeg", folder="gen_images") -> str:
-        """Uploads an image file to Firebase Storage and returns the public URL."""
+    def upload_image(self, image_bytes: bytes, extension="jpeg", content_type="image/jpeg", folder="gen_images", custom_filename: str = None) -> tuple[str, str]:
+        """Uploads an image file to Firebase Storage and returns the (public_url, file_path)."""
         if not firebase_admin._apps:
             print("Firebase is not initialized. Cannot upload.")
-            return None
+            return None, None
             
         try:
             bucket = storage.bucket()
-            file_name = f"{folder}/{self._generate_unique_filename(extension)}"
+            if custom_filename:
+                file_name = f"{folder}/{custom_filename}"
+            else:
+                file_name = f"{folder}/{self._generate_unique_filename(extension)}"
+            
             blob = bucket.blob(file_name)
             
             # Upload from bytes
@@ -57,11 +61,11 @@ class FirebaseCRUD:
             # Make the file public so it can be accessed via URL
             blob.make_public()
             
-            # Return the public URL
-            return blob.public_url
+            # Return the public URL and path
+            return blob.public_url, file_name
         except Exception as e:
             print(f"Error uploading to Firebase Storage: {e}")
-            return None
+            return None, None
 
     def insert_row(self, collection_name: str, data: dict):
         """Inserts a document into a Firestore collection and returns its auto-generated ID."""

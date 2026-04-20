@@ -17,6 +17,8 @@ class WordAgentInput(BaseModel):
     country: str = "None"
     image_style: str = "None"
     proficiency_level: str = "None"
+    userid: str = "None"
+    card_id: str = "None"
 
 
 class WordAgentResponse(BaseModel):

@@ -75,10 +75,10 @@ def _resize_image(image_bytes: bytes, max_dimension: Optional[int] = 400) -> byt
         logging.getLogger("GeminiWrapper").warning(f"Image resizing failed: {e}")
         return image_bytes
 
-def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper) -> Optional[str]:
+def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, userid: str = "None", card_id: str = "None") -> tuple[Optional[str], Optional[str]]:
     """Generates an image from a prompt, resizes it, and uploads to Firebase."""
     if not image_prompt:
-        return None
+        return None, None
 
     input_params = InputParams(
         prompt=image_prompt,
@@ -93,7 +93,7 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper) -> Opt
         print(f"Error: {result.get('error')}")
         print(f"Raw Logs: {result.get('error_log')}")
         print(f"-------------------------------\n")
-        return None
+        return None, None
     
     image_bytes = result["content"]
     
@@ -101,8 +101,19 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper) -> Opt
     image_bytes = _resize_image(image_bytes, max_dimension=400)
     
     # Upload to Firebase
-    public_url = firebase_crud.upload_image(image_bytes, folder="post_images")
-    return public_url
+    if userid != "None" and card_id != "None":
+        folder_path = f"post_images/{userid}/{card_id}"
+        custom_fn = "ai.jpeg"
+    else:
+        folder_path = "post_images"
+        custom_fn = None
+        
+    public_url, file_path = firebase_crud.upload_image(
+        image_bytes, 
+        folder=folder_path, 
+        custom_filename=custom_fn
+    )
+    return public_url, file_path
 
 # -----------------------------------------------------------------------------
 # Main Logic
@@ -136,8 +147,14 @@ def process_word_sync(
 
     # 2. Generate Image if valid and prompt exists
     image_url = None
+    image_path = None
     if word_data.is_valid and word_data.image_prompt:
-        image_url = generate_post_image(word_data.image_prompt, gemini_wrapper)
+        image_url, image_path = generate_post_image(
+            word_data.image_prompt, 
+            gemini_wrapper, 
+            userid=input_data.userid, 
+            card_id=input_data.card_id
+        )
         
     # 3. Store in Firebase Firestore
     db_data = {
@@ -148,7 +165,8 @@ def process_word_sync(
         "examples": word_data.examples,
         "warning": word_data.warning,
         "type": word_data.type,
-        "url": image_url
+        "url": image_url,
+        "image_path": image_path
     }
     
     stored_id = firebase_crud.insert_row("vocabulary_items", db_data)
@@ -163,6 +181,7 @@ def process_word_sync(
         "warning": word_data.warning,
         "type": word_data.type,
         "URL": image_url, # Capitalized URL
+        "image_path": image_path,
         "id": stored_id
     }
 
@@ -189,7 +208,9 @@ async def generate_word_content(
     age: Optional[str] = None,
     level: Optional[str] = None,
     style: Optional[str] = None,
-    country: Optional[str] = None
+    country: Optional[str] = None,
+    userid: Optional[str] = None,
+    card_id: Optional[str] = None
 ):
     if not words:
         return {"error": "No words provided"}
@@ -208,7 +229,9 @@ async def generate_word_content(
             user_age=age or "None",
             proficiency_level=level or "None",
             image_style=style or "None",
-            country=country or "None"
+            country=country or "None",
+            userid=userid or "None",
+            card_id=card_id or "None"
         )
         tasks.append(
             process_word_async(
