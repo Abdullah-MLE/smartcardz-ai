@@ -47,32 +47,32 @@ firebase_crud = FirebaseCRUD()
 # -----------------------------------------------------------------------------
 # Image Generation Helper
 # -----------------------------------------------------------------------------
-def _resize_image(image_bytes: bytes, max_dimension: Optional[int] = 400) -> bytes:
+def _resize_image(image_bytes: bytes, max_dimension: Optional[int] = 400, quality: int = 80) -> bytes:
     """
     Resizes image bytes if dimensions exceed max_dimension, maintaining aspect ratio.
-    Does NOT upscale.
+    Converts and compresses the image to high-efficiency WebP format.
     """
-    if not max_dimension:
-        return image_bytes
-
     try:
         with Image.open(io.BytesIO(image_bytes)) as img:
-            width, height = img.size
-            if width <= max_dimension and height <= max_dimension:
-                return image_bytes
-                
-            scale_factor = min(max_dimension / width, max_dimension / height)
-            new_width = int(width * scale_factor)
-            new_height = int(height * scale_factor)
+            # WebP natively supports RGB and RGBA. Convert others.
+            if img.mode not in ('RGB', 'RGBA'):
+                img = img.convert('RGBA')
+
+            if max_dimension:
+                width, height = img.size
+                if width > max_dimension or height > max_dimension:
+                    scale_factor = min(max_dimension / width, max_dimension / height)
+                    new_width = int(width * scale_factor)
+                    new_height = int(height * scale_factor)
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             
-            resized_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
             output = io.BytesIO()
-            fmt = img.format if img.format else 'JPEG'
-            resized_img.save(output, format=fmt)
+            # method=6 ensures max compression effort while maintaining the `quality` visual standard
+            img.save(output, format='WEBP', quality=quality, method=6)
             return output.getvalue()
             
     except Exception as e:
-        logging.getLogger("GeminiWrapper").warning(f"Image resizing failed: {e}")
+        logging.getLogger("GeminiWrapper").warning(f"Image compression failed: {e}")
         return image_bytes
 
 def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, userid: str = "None", card_id: str = "None") -> tuple[Optional[str], Optional[str]]:
@@ -96,14 +96,12 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, userid
         return None, None
     
     image_bytes = result["content"]
-    
-    # Resize the image
-    image_bytes = _resize_image(image_bytes, max_dimension=400)
+    image_bytes = _resize_image(image_bytes, max_dimension=400, quality=80)
     
     # Upload to Firebase
     if userid != "None" and card_id != "None":
         folder_path = f"cards/{userid}/{card_id}"
-        custom_fn = "ai.jpeg"
+        custom_fn = "ai.webp"
     else:
         folder_path = "cards"
         custom_fn = None
@@ -111,7 +109,9 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, userid
     public_url, file_path = firebase_crud.upload_image(
         image_bytes, 
         folder=folder_path, 
-        custom_filename=custom_fn
+        custom_filename=custom_fn,
+        extension="webp",
+        content_type="image/webp"
     )
     return public_url, file_path
 
