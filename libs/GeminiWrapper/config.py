@@ -20,9 +20,9 @@ class GeminiConfig(BaseModel):
     ]
     
     # Image Generation Models
-    default_image_model: str = "gemini-2.5-flash-image"
+    default_image_model: str = "imagen-4.0-fastgenerate-001"
     image_models: List[str] = [
-        "gemini-2.5-flash-image",
+        "imagen-4.0-fastgenerate-001",
         "gemini-2.5-flash-image",
     ]
     

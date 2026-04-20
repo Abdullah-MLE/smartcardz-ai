@@ -82,7 +82,7 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, userid
 
     input_params = InputParams(
         prompt=image_prompt,
-        model="gemini-2.5-flash-image"
+        model="imagen-4.0-fastgenerate-001"
     )
     image_params = ImageParams(output_image_aspect_ratio="1:1") # Defaulting to 1:1 as per common square posts
     
@@ -156,21 +156,6 @@ def process_word_sync(
             card_id=input_data.card_id
         )
         
-    # 3. Store in Firebase Firestore
-    db_data = {
-        "word": input_data.word,
-        "description": word_data.description,
-        "suggestions": word_data.suggestions,
-        "is_valid": word_data.is_valid,
-        "examples": word_data.examples,
-        "warning": word_data.warning,
-        "type": word_data.type,
-        "url": image_url,
-        "ai_image_path": ai_image_path
-    }
-    
-    stored_id = firebase_crud.insert_row("vocabulary_items", db_data)
-
     # Construct final response dictionary matching user requirements
     final_response = {
         "word": input_data.word,
@@ -181,8 +166,7 @@ def process_word_sync(
         "warning": word_data.warning,
         "type": word_data.type,
         "URL": image_url, # Capitalized URL
-        "ai_image_path": ai_image_path,
-        "id": stored_id
+        "ai_image_path": ai_image_path
     }
 
     return final_response
