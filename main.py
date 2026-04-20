@@ -102,10 +102,10 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, userid
     
     # Upload to Firebase
     if userid != "None" and card_id != "None":
-        folder_path = f"post_images/{userid}/{card_id}"
+        folder_path = f"cards/{userid}/{card_id}"
         custom_fn = "ai.jpeg"
     else:
-        folder_path = "post_images"
+        folder_path = "cards"
         custom_fn = None
         
     public_url, file_path = firebase_crud.upload_image(
@@ -147,9 +147,9 @@ def process_word_sync(
 
     # 2. Generate Image if valid and prompt exists
     image_url = None
-    image_path = None
+    ai_image_path = None
     if word_data.is_valid and word_data.image_prompt:
-        image_url, image_path = generate_post_image(
+        image_url, ai_image_path = generate_post_image(
             word_data.image_prompt, 
             gemini_wrapper, 
             userid=input_data.userid, 
@@ -166,7 +166,7 @@ def process_word_sync(
         "warning": word_data.warning,
         "type": word_data.type,
         "url": image_url,
-        "image_path": image_path
+        "ai_image_path": ai_image_path
     }
     
     stored_id = firebase_crud.insert_row("vocabulary_items", db_data)
@@ -181,7 +181,7 @@ def process_word_sync(
         "warning": word_data.warning,
         "type": word_data.type,
         "URL": image_url, # Capitalized URL
-        "image_path": image_path,
+        "ai_image_path": ai_image_path,
         "id": stored_id
     }
 
