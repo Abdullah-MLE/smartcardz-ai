@@ -200,12 +200,15 @@ async def generate_word_content(
         return {"error": "No words provided"}
 
     word_list = [w.strip() for w in words.split(",") if w.strip()]
+    card_id_list = [c.strip() for c in card_id.split(",")] if card_id else []
     
     if not word_list:
         return {"error": "No valid words provided"}
 
     tasks = []
-    for word in word_list:
+    for i, word in enumerate(word_list):
+        current_card_id = card_id_list[i] if i < len(card_id_list) and card_id_list[i] else "None"
+        
         input_data = WordAgentInput(
             word=word,
             target_language=lang or "as the word",
@@ -215,7 +218,7 @@ async def generate_word_content(
             image_style=style or "None",
             country=country or "None",
             userid=userid or "None",
-            card_id=card_id or "None"
+            card_id=current_card_id
         )
         tasks.append(
             process_word_async(
