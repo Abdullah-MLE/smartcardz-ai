@@ -96,7 +96,7 @@ def generate_post_image(image_prompt: str, gemini_wrapper: GeminiWrapper, userid
         return None, None
     
     image_bytes = result["content"]
-    image_bytes = _resize_image(image_bytes, max_dimension=400, quality=80)
+    image_bytes = _resize_image(image_bytes, max_dimension=800, quality=85)
     
     # Upload to Firebase
     if userid != "None" and card_id != "None":
